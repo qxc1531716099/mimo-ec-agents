@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商全平台智能上下架多Agent运营系统 - Multi-Agent E-commerce System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #818CF8;
+            --secondary: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg: #0F172A;
+            --card: #1E293B;
+            --card-hover: #334155;
+            --text: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border: #334155;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        /* Background animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 20% 20%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+
+        /* Header */
+        header {
+            padding: 32px 0;
+            border-bottom: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+        }
+        .logo-text h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+        .logo-text p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .header-stats { display: flex; gap: 32px; }
+        .hstat { text-align: center; }
+        .hstat-val { font-size: 24px; font-weight: 700; color: var(--secondary); }
+        .hstat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Status bar */
+        .status-bar {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin: 24px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid var(--border);
+        }
+        .status-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot-green { background: var(--secondary); box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+        .dot-blue { background: var(--primary-light); box-shadow: 0 0 8px rgba(129, 140, 248, 0.6); }
+        .live-badge {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--secondary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 60px 0 40px;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(79, 70, 229, 0.15);
+            color: var(--primary-light);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid rgba(79, 70, 229, 0.3);
+            margin-bottom: 20px;
+        }
+        .hero h2 { font-size: 40px; font-weight: 800; line-height: 1.2; margin-bottom: 16px; background: linear-gradient(135deg, #fff, #94A3B8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 16px; color: var(--text-muted); max-width: 700px; margin: 0 auto 32px; line-height: 1.7; }
+
+        /* Metrics */
+        .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 40px; }
+        .metric-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 16px 16px 0 0;
+        }
+        .metric-card:nth-child(1)::before { background: var(--secondary); }
+        .metric-card:nth-child(2)::before { background: var(--primary); }
+        .metric-card:nth-child(3)::before { background: var(--warning); }
+        .metric-card:nth-child(4)::before { background: #EC4899; }
+        .metric-card:nth-child(5)::before { background: #06B6D4; }
+        .metric-card:hover { transform: translateY(-4px); border-color: var(--primary-light); }
+        .metric-icon { font-size: 28px; margin-bottom: 12px; }
+        .metric-val { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+        .metric-card:nth-child(1) .metric-val { color: var(--secondary); }
+        .metric-card:nth-child(2) .metric-val { color: var(--primary-light); }
+        .metric-card:nth-child(3) .metric-val { color: var(--warning); }
+        .metric-card:nth-child(4) .metric-val { color: #EC4899; }
+        .metric-card:nth-child(5) .metric-val { color: #06B6D4; }
+        .metric-label { font-size: 13px; color: var(--text-muted); }
+        .metric-change { font-size: 12px; margin-top: 8px; padding: 2px 8px; border-radius: 8px; display: inline-block; }
+        .change-up { background: rgba(16, 185, 129, 0.15); color: var(--secondary); }
+        .change-down { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+        /* Section titles */
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Agent workflow */
+        .workflow-section { margin-bottom: 48px; }
+        .workflow-container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            position: relative;
+        }
+        .workflow-viz {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }
+        .agent-node {
+            width: 140px;
+            text-align: center;
+            padding: 16px 12px;
+            background: rgba(79, 70, 229, 0.1);
+            border: 1px solid rgba(79, 70, 229, 0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .agent-node:hover { background: rgba(79, 70, 229, 0.2); transform: scale(1.05); }
+        .agent-node.active { border-color: var(--secondary); box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.1); }
+        .agent-node.running { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 20px 5px rgba(16,185,129,0.2); } }
+        .agent-icon { font-size: 32px; margin-bottom: 8px; }
+        .agent-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .agent-status { font-size: 11px; color: var(--text-muted); }
+        .agent-node.active .agent-status { color: var(--secondary); }
+        .agent-badge {
+            position: absolute;
+            top: -6px; right: -6px;
+            background: var(--secondary);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .arrow { color: var(--text-muted); font-size: 20px; }
+
+        /* Agent detail cards */
+        .agent-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .agent-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        .agent-card:hover { border-color: var(--primary-light); }
+        .agent-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .agent-card-icon { font-size: 24px; }
+        .agent-card-title { font-size: 14px; font-weight: 700; }
+        .agent-card-sub { font-size: 11px; color: var(--text-muted); }
+        .agent-card-body { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+        .agent-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .tag {
+            background: rgba(79, 70, 229, 0.15);
+            color: var(--primary-light);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+
+        /* Live log */
+        .log-section { margin-bottom: 48px; }
+        .log-container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .log-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .log-header h3 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .log-body { height: 300px; overflow-y: auto; padding: 16px 24px; font-family: 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 12px; }
+        .log-body::-webkit-scrollbar { width: 6px; }
+        .log-body::-webkit-scrollbar-track { background: transparent; }
+        .log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .log-line { padding: 4px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.5); display: flex; gap: 12px; opacity: 0; animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { to { opacity: 1; } }
+        .log-time { color: var(--text-muted); white-space: nowrap; }
+        .log-agent { color: var(--primary-light); white-space: nowrap; min-width: 100px; }
+        .log-msg { color: var(--text); flex: 1; }
+        .log-ok { color: var(--secondary); }
+        .log-warn { color: var(--warning); }
+        .log-error { color: var(--danger); }
+        .log-info { color: var(--primary-light); }
+
+        /* Platform section */
+        .platform-section { margin-bottom: 48px; }
+        .platforms { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
+        .platform {
+            text-align: center;
+            padding: 32px 40px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            transition: all 0.3s;
+            min-width: 160px;
+        }
+        .platform:hover { transform: translateY(-4px); border-color: var(--primary-light); }
+        .platform-icon { font-size: 48px; margin-bottom: 12px; }
+        .platform-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+        .platform-count { font-size: 12px; color: var(--text-muted); }
+        .platform-badge {
+            display: inline-block;
+            margin-top: 8px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--secondary);
+            padding: 2px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* CTA */
+        .cta-section {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.2), rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(79, 70, 229, 0.3);
+            border-radius: 20px;
+            padding: 48px;
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .cta-section h2 { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
+        .cta-section p { color: var(--text-muted); margin-bottom: 24px; }
+        .cta-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { border-color: var(--primary-light); background: rgba(79, 70, 229, 0.1); }
+
+        /* Footer */
+        footer { border-top: 1px solid var(--border); padding: 32px 0; text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 48px; }
+        footer a { color: var(--primary-light); text-decoration: none; }
+
+        /* Simulation controls */
+        .sim-controls { display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; }
+        .sim-btn {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            transition: all 0.3s;
+        }
+        .sim-btn:hover { border-color: var(--primary-light); background: rgba(79, 70, 229, 0.1); }
+        .sim-btn.running { border-color: var(--secondary); color: var(--secondary); }
+
+        /* Platform filter */
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 24px; justify-content: center; }
+        .filter-tab {
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            transition: all 0.3s;
+        }
+        .filter-tab.active { border-color: var(--primary-light); color: var(--primary-light); background: rgba(79, 70, 229, 0.1); }
+
+        /* Progress bars */
+        .progress-list { display: flex; flex-direction: column; gap: 16px; }
+        .progress-item { display: flex; align-items: center; gap: 16px; }
+        .progress-label { min-width: 140px; font-size: 13px; }
+        .progress-bar { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+        .progress-val { min-width: 50px; font-size: 13px; font-weight: 600; text-align: right; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+            .agent-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .agent-cards { grid-template-columns: 1fr; }
+            .header-stats { display: none; }
+            .hero h2 { font-size: 28px; }
+            .workflow-viz { gap: 4px; }
+            .agent-node { width: 100px; padding: 10px 8px; }
+            .agent-icon { font-size: 24px; }
+            .agent-name { font-size: 11px; }
+            .platforms { gap: 16px; }
+            .platform { min-width: 130px; padding: 20px; }
+        }
+        @media (max-width: 480px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+            .workflow-viz { flex-direction: column; }
+            .arrow { transform: rotate(90deg); }
+        }
+
+        /* Animation for number changes */
+        .num-animate { transition: all 0.5s ease; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <div class="logo-icon">🤖</div>
+                <div class="logo-text">
+                    <h1>电商全平台智能上下架多Agent运营系统</h1>
+                    <p>Multi-Agent E-commerce Operations System · Powered by LLM</p>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="hstat"><div class="hstat-val" id="headerTokens">0</div><div class="hstat-label">日Token消耗</div></div>
+                <div class="hstat"><div class="hstat-val">3</div><div class="hstat-label">TP公司</div></div>
+                <div class="hstat"><div class="hstat-val">12</div><div class="hstat-label">品牌店铺</div></div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Status bar -->
+        <div class="status-bar">
+            <div style="display:flex;gap:24px;align-items:center;">
+                <div class="status-item"><span class="status-dot dot-green"></span><span>系统运行正常</span></div>
+                <div class="status-item"><span class="status-dot dot-blue"></span><span>6个Agent在线</span></div>
+                <div class="status-item"><span class="status-dot dot-green"></span><span>3大平台已连接</span></div>
+                <div class="status-item"><span class="status-dot dot-green"></span><span>Token余额充足</span></div>
+            </div>
+            <div class="live-badge">🔴 LIVE</div>
+        </div>
+
+        <!-- Hero -->
+        <div class="hero">
+            <div class="hero-badge">🎯 mimo 百亿 Token 活动申请项目</div>
+            <h2>基于大模型驱动的<br>电商全平台智能上下架多 Agent 运营系统</h2>
+            <p>六大核心模块协同工作，多 Agent 分工智能调度，全链路长链推理闭环，覆盖淘宝、拼多多、抖音电商三大主流平台，日均稳定消耗 900 万 Token。</p>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">⚡</div>
+                <div class="metric-val num-animate" id="m1">95%</div>
+                <div class="metric-label">上下架效率提升</div>
+                <div class="metric-change change-up">↑ 相比传统方式</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">🛡️</div>
+                <div class="metric-val num-animate" id="m2">90%</div>
+                <div class="metric-label">合规违规率下降</div>
+                <div class="metric-change change-down">↓ 风险显著降低</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">💰</div>
+                <div class="metric-val num-animate" id="m3">70%</div>
+                <div class="metric-label">运营人力成本降低</div>
+                <div class="metric-change change-up">↑ 单店节省</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">📦</div>
+                <div class="metric-val" style="color:#EC4899">0</div>
+                <div class="metric-label">超卖风险</div>
+                <div class="metric-change change-down">✓ 已清零</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">🔢</div>
+                <div class="metric-val num-animate" id="m5">900<span style="font-size:20px">万</span></div>
+                <div class="metric-label">日均Token消耗</div>
+                <div class="metric-change change-up">↑ 持续增长中</div>
+            </div>
+        </div>
+
+        <!-- Agent Workflow -->
+        <div class="workflow-section">
+            <div class="section-title">🔄 多 Agent 协作工作流</div>
+            <div class="workflow-container">
+                <div class="sim-controls">
+                    <button class="sim-btn" id="simBtn" onclick="toggleSimulation()">▶ 启动实时模拟</button>
+                    <button class="sim-btn" onclick="resetSimulation()">↻ 重置</button>
+                </div>
+                <div class="workflow-viz" id="workflowViz">
+                    <div class="agent-node" id="an1">
+                        <div class="agent-icon">📦</div>
+                        <div class="agent-name">商品解析</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="agent-node" id="an2">
+                        <div class="agent-icon">⚖️</div>
+                        <div class="agent-name">合规检测</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="agent-node" id="an3">
+                        <div class="agent-icon">🔄</div>
+                        <div class="agent-name">上下架调度</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="agent-node" id="an4">
+                        <div class="agent-icon">📊</div>
+                        <div class="agent-name">库存同步</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="agent-node" id="an5">
+                        <div class="agent-icon">✨</div>
+                        <div class="agent-name">商品优化</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="agent-node" id="an6">
+                        <div class="agent-icon">📋</div>
+                        <div class="agent-name">运营复盘</div>
+                        <div class="agent-status">等待中</div>
+                    </div>
+                </div>
+
+                <!-- Progress bars -->
+                <div style="margin-top:16px">
+                    <div class="progress-list">
+                        <div class="progress-item">
+                            <span class="progress-label">📦 商品解析进度</span>
+                            <div class="progress-bar"><div class="progress-fill" id="pb1" style="width:0%;background:var(--secondary)"></div></div>
+                            <span class="progress-val" id="pv1">0%</span>
+                        </div>
+                        <div class="progress-item">
+                            <span class="progress-label">⚖️ 合规检测进度</span>
+                            <div class="progress-bar"><div class="progress-fill" id="pb2" style="width:0%;background:var(--primary)"></div></div>
+                            <span class="progress-val" id="pv2">0%</span>
+                        </div>
+                        <div class="progress-item">
+                            <span class="progress-label">🔄 上下架执行进度</span>
+                            <div class="progress-bar"><div class="progress-fill" id="pb3" style="width:0%;background:var(--warning)"></div></div>
+                            <span class="progress-val" id="pv3">0%</span>
+                        </div>
+                        <div class="progress-item">
+                            <span class="progress-label">📊 库存同步进度</span>
+                            <div class="progress-bar"><div class="progress-fill" id="pb4" style="width:0%;background:#EC4899"></div></div>
+                            <span class="progress-val" id="pv4">0%</span>
+                        </div>
+                        <div class="progress-item">
+                            <span class="progress-label">✨ 商品优化进度</span>
+                            <div class="progress-bar"><div class="progress-fill" id="pb5" style="width:0%;background:#06B6D4"></div></div>
+                            <span class="progress-val" id="pv5">0%</span>
+                        </div>
+                        <div class="progress-item">
+                            <span class="progress-label">📋 运营复盘进度</span>
+                            <div class="progress-bar"><div class="progress-fill" id="pb6" style="width:0%;background:#8B5CF6"></div></div>
+                            <span class="progress-val" id="pv6">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Log -->
+        <div class="log-section">
+            <div class="section-title">📊 实时运行日志</div>
+            <div class="log-container">
+                <div class="log-header">
+                    <h3>🔍 系统日志 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">自动刷新</span></h3>
+                    <button class="sim-btn" onclick="clearLog()">清空日志</button>
+                </div>
+                <div class="log-body" id="logBody"></div>
+            </div>
+        </div>
+
+        <!-- Agent Detail Cards -->
+        <div class="section-title">🧩 六大核心模块详解</div>
+        <div class="agent-cards">
+            <div class="agent-card">
+                <div class="agent-card-header">
+                    <div class="agent-card-icon">📦</div>
+                    <div>
+                        <div class="agent-card-title">商品信息解析 Agent</div>
+                        <div class="agent-card-sub">Product Info Parser</div>
+                    </div>
+                </div>
+                <div class="agent-card-body">自动抓取多平台店铺商品数据，通过长链推理拆解商品核心属性与上下架要求，智能识别平台差异规则。</div>
+                <div class="agent-tags">
+                    <span class="tag">多平台数据抓取</span>
+                    <span class="tag">长链推理</span>
+                    <span class="tag">规则解析</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-card-header">
+                    <div class="agent-card-icon">⚖️</div>
+                    <div>
+                        <div class="agent-card-title">合规检测 Agent</div>
+                        <div class="agent-card-sub">Compliance Detector</div>
+                    </div>
+                </div>
+                <div class="agent-card-body">基于最新广告法与平台规则，扫描商品标题、主图、详情页全内容违规风险，生成优化方案并追踪整改。</div>
+                <div class="agent-tags">
+                    <span class="tag">广告法检测</span>
+                    <span class="tag">平台规则</span>
+                    <span class="tag">风险预警</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-card-header">
+                    <div class="agent-card-icon">🔄</div>
+                    <div>
+                        <div class="agent-card-title">智能上下架调度 Agent</div>
+                        <div class="agent-card-sub">Smart Scheduler</div>
+                    </div>
+                </div>
+                <div class="agent-card-body">通过长链推理生成最优上下架策略，自动执行多平台批量操作，支持库存阈值触发自动上下架。</div>
+                <div class="agent-tags">
+                    <span class="tag">批量操作</span>
+                    <span class="tag">策略优化</span>
+                    <span class="tag">阈值触发</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-card-header">
+                    <div class="agent-card-icon">📊</div>
+                    <div>
+                        <div class="agent-card-title">库存同步 Agent</div>
+                        <div class="agent-card-sub">Inventory Sync</div>
+                    </div>
+                </div>
+                <div class="agent-card-body">打通 ERP 与多平台库存数据，实时监控各平台库存状态，库存低于阈值自动下架，补足后自动上架，超卖风险清零。</div>
+                <div class="agent-tags">
+                    <span class="tag">ERP对接</span>
+                    <span class="tag">实时同步</span>
+                    <span class="tag">超卖防护</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-card-header">
+                    <div class="agent-card-icon">✨</div>
+                    <div>
+                        <div class="agent-card-title">商品优化 Agent</div>
+                        <div class="agent-card-sub">Product Optimizer</div>
+                    </div>
+                </div>
+                <div class="agent-card-body">基于实时流量数据，自动优化商品标题、主图、卖点文案，结合搜索排名算法持续提升商品曝光与转化率。</div>
+                <div class="agent-tags">
+                    <span class="tag">标题优化</span>
+                    <span class="tag">流量分析</span>
+                    <span class="tag">转化提升</span>
+                </div>
+            </div>
+            <div class="agent-card">
+                <div class="agent-card-header">
+                    <div class="agent-card-icon">📋</div>
+                    <div>
+                        <div class="agent-card-title">运营复盘 Agent</div>
+                        <div class="agent-card-sub">Operations Reviewer</div>
+                    </div>
+                </div>
+                <div class="agent-card-body">汇总全流程运营数据，生成多维度复盘报告，反向迭代优化上下架策略，形成完整自闭环，持续提升运营效果。</div>
+                <div class="agent-tags">
+                    <span class="tag">数据复盘</span>
+                    <span class="tag">策略迭代</span>
+                    <span class="tag">闭环优化</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Platforms -->
+        <div class="platform-section" style="margin-top:48px">
+            <div class="section-title">🌐 支持平台</div>
+            <div class="platforms">
+                <div class="platform">
+                    <div class="platform-icon">🛒</div>
+                    <div class="platform-name">淘宝 / 天猫</div>
+                    <div class="platform-count">已连接 · 4 家店铺</div>
+                    <div class="platform-badge">✓ 运营中</div>
+                </div>
+                <div class="platform">
+                    <div class="platform-icon">🍊</div>
+                    <div class="platform-name">拼多多</div>
+                    <div class="platform-count">已连接 · 4 家店铺</div>
+                    <div class="platform-badge">✓ 运营中</div>
+                </div>
+                <div class="platform">
+                    <div class="platform-icon">🎵</div>
+                    <div class="platform-name">抖音电商</div>
+                    <div class="platform-count">已连接 · 4 家店铺</div>
+                    <div class="platform-badge">✓ 运营中</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="cta-section">
+            <h2>🚀 开启智能电商运营新时代</h2>
+            <p>基于大模型的多 Agent 协作系统，让您的电商运营效率提升 95%，合规违规率下降 90%</p>
+            <div class="cta-buttons">
+                <a href="https://github.com/qxc1531716099/mimo-ec-agents" class="btn btn-primary" target="_blank">
+                    <span>🐙</span> GitHub 源码
+                </a>
+                <a href="#" class="btn btn-outline">
+                    <span>📧</span> 联系我们
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>电商全平台智能上下架多Agent运营系统 · <a href="https://github.com/qxc1531716099/mimo-ec-agents">GitHub</a> · mimo 百亿 Token 活动申请</p>
+            <p style="margin-top:8px;font-size:12px;color:#64748B;">© 2026 · 基于大模型驱动 · 多 Agent 分工协同</p>
+        </div>
+    </footer>
+
+    <script>
+        // Counter animation
+        function animateCounter(el, target, suffix='') {
+            let current = 0;
+            const step = target / 60;
+            const interval = setInterval(() => {
+                current += step;
+                if (current >= target) { current = target; clearInterval(interval); }
+                el.textContent = Math.floor(current) + suffix;
+            }, 16);
+        }
+
+        // Token counter
+        let baseTokens = 8900000;
+        function updateTokenCounter() {
+            baseTokens += Math.floor(Math.random() * 50);
+            document.getElementById('headerTokens').textContent = (baseTokens/10000).toFixed(0) + '万';
+        }
+        setInterval(updateTokenCounter, 3000);
+
+        // Log system
+        const agents = [
+            { name: '商品解析', icon: '📦', color: 'var(--secondary)' },
+            { name: '合规检测', icon: '⚖️', color: 'var(--primary-light)' },
+            { name: '上下架调度', icon: '🔄', color: 'var(--warning)' },
+            { name: '库存同步', icon: '📊', color: '#EC4899' },
+            { name: '商品优化', icon: '✨', color: '#06B6D4' },
+            { name: '运营复盘', icon: '📋', color: '#8B5CF6' }
+        ];
+
+        const logTemplates = [
+            { agent: 0, msg: '抓取淘宝店铺商品数据，共 328 件商品', type: 'ok' },
+            { agent: 0, msg: '解析商品核心属性：标题、价格、SKU、库存', type: 'ok' },
+            { agent: 0, msg: '识别平台差异规则：淘宝/拼多多/抖音', type: 'ok' },
+            { agent: 1, msg: '扫描商品标题违规风险，检测到 3 处疑似违规', type: 'warn' },
+            { agent: 1, msg: '广告法关键词检测：极限词替换建议已生成', type: 'ok' },
+            { agent: 1, msg: '合规检测完成，违规率：0.8%（合规）', type: 'ok' },
+            { agent: 2, msg: '生成最优上下架策略：大促期间分时段上架', type: 'ok' },
+            { agent: 2, msg: '批量执行淘宝上架：120 件商品', type: 'info' },
+            { agent: 2, msg: '批量执行拼多多上架：98 件商品', type: 'info' },
+            { agent: 2, msg: '批量执行抖音上架：75 件商品', type: 'info' },
+            { agent: 3, msg: '同步 ERP 库存数据，偏差值：0', type: 'ok' },
+            { agent: 3, msg: '拼多多库存更新：SKU#8821 → 50件', type: 'info' },
+            { agent: 3, msg: '抖音库存更新：SKU#9902 → 120件', type: 'info' },
+            { agent: 4, msg: '分析实时流量数据，访客数 +12.5%', type: 'ok' },
+            { agent: 4, msg: '优化商品标题，点击率预估提升 8.3%', type: 'ok' },
+            { agent: 5, msg: '汇总今日运营数据，总 GMV ¥128,450', type: 'ok' },
+            { agent: 5, msg: '生成运营复盘报告，策略迭代建议已输出', type: 'ok' },
+        ];
+
+        let simRunning = false;
+        let simInterval = null;
+        let logIdx = 0;
+        let progressVals = [0,0,0,0,0,0];
+
+        function getTime() {
+            const now = new Date();
+            return now.toTimeString().split(' ')[0];
+        }
+
+        function addLog(agentIdx, msg, type) {
+            const logBody = document.getElementById('logBody');
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            const agent = agents[agentIdx];
+            line.innerHTML = `
+                <span class="log-time">${getTime()}</span>
+                <span class="log-agent" style="color:${agent.color}">${agent.icon} ${agent.name}</span>
+                <span class="log-msg log-${type}">${msg}</span>
+            `;
+            logBody.appendChild(line);
+            logBody.scrollTop = logBody.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logBody').innerHTML = '';
+        }
+
+        function toggleSimulation() {
+            const btn = document.getElementById('simBtn');
+            if (simRunning) {
+                simRunning = false;
+                clearInterval(simInterval);
+                btn.textContent = '▶ 启动实时模拟';
+                btn.classList.remove('running');
+            } else {
+                simRunning = true;
+                btn.textContent = '⏸ 暂停模拟';
+                btn.classList.add('running');
+                runSimulation();
+                simInterval = setInterval(runSimulation, 2500);
+            }
+        }
+
+        function runSimulation() {
+            if (logIdx >= logTemplates.length) {
+                logIdx = 0;
+                // Reset progress
+                progressVals = [0,0,0,0,0,0];
+                updateProgress();
+            }
+            const entry = logTemplates[logIdx];
+            addLog(entry.agent, entry.msg, entry.type);
+            progressVals[entry.agent] = Math.min(100, progressVals[entry.agent] + Math.floor(Math.random()*15)+10);
+            updateProgress();
+            highlightAgent(entry.agent);
+            logIdx++;
+        }
+
+        function updateProgress() {
+            for (let i = 0; i < 6; i++) {
+                const pb = document.getElementById('pb'+(i+1));
+                const pv = document.getElementById('pv'+(i+1));
+                if (pb && pv) {
+                    pb.style.width = progressVals[i] + '%';
+                    pv.textContent = Math.min(100, progressVals[i]) + '%';
+                }
+            }
+        }
+
+        function highlightAgent(idx) {
+            for (let i = 1; i <= 6; i++) {
+                const node = document.getElementById('an' + i);
+                node.classList.remove('active', 'running');
+                node.querySelector('.agent-status').textContent = '等待中';
+            }
+            const node = document.getElementById('an' + (idx+1));
+            node.classList.add('active', 'running');
+            node.querySelector('.agent-status').textContent = '运行中';
+
+            setTimeout(() => {
+                if (simRunning) {
+                    node.classList.remove('running');
+                    node.classList.add('active');
+                    node.querySelector('.agent-status').textContent = '✓ 完成';
+                }
+            }, 2000);
+        }
+
+        function resetSimulation() {
+            simRunning = false;
+            clearInterval(simInterval);
+            logIdx = 0;
+            progressVals = [0,0,0,0,0,0];
+            updateProgress();
+            clearLog();
+            document.getElementById('simBtn').textContent = '▶ 启动实时模拟';
+            document.getElementById('simBtn').classList.remove('running');
+            for (let i = 1; i <= 6; i++) {
+                const node = document.getElementById('an'+i);
+                node.classList.remove('active', 'running');
+                node.querySelector('.agent-status').textContent = '等待中';
+            }
+        }
+
+        // Initial log
+        addLog(0, '系统初始化完成，6 个 Agent 模块已就绪', 'ok');
+        addLog(0, '连接 3 大电商平台 API：淘宝/拼多多/抖音', 'ok');
+        addLog(1, '加载最新广告法规则库 v3.2.1', 'ok');
+        addLog(3, 'ERP 库存同步通道已建立', 'ok');
+    </script>
+</body>
+</html>
